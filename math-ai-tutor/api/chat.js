@@ -1,6 +1,8 @@
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
-
+    
+    console.log('Body received:', JSON.stringify(req.body)); // ← السطر الجديد
+    
     const { messages, sectionId } = req.body;
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
