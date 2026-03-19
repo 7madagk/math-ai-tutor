@@ -5657,16 +5657,19 @@
 
     <script>
         // ══ WELCOME SCREEN ══
-        function closeWelcome() {
+       function closeWelcome() {
+    // 1. إخفاء شاشة الترحيب
     document.getElementById('welcomeScreen').classList.add('hidden');
-    
-    // التعديل اللي ناقصك هنا: فتح صفحة الـ Intro فوراً
+
+    // 2. السطر اللي كان ناقصك: فتح صفحة الـ Intro فوراً
     goPage('intro', 'Introduction'); 
 
+    // 3. إظهار تلميحات البداية في السايد بار
     document.getElementById('sidebarStartPrompt').classList.add('show');
     document.getElementById('intro-dot').classList.add('glow');
     document.getElementById('introTooltip').classList.add('show');
-    
+
+    // لو موبايل، افتح القائمة الجانبية عشان الطالب يشوف هيبدأ منين
     if (window.innerWidth <= 760) {
         document.getElementById('sidebar').classList.add('open');
         document.getElementById('mobOverlay').classList.add('show');
