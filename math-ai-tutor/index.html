@@ -6576,6 +6576,34 @@
         // Get current question context for preview chats
         function getPreviewContext(s) { return ''; }
 
+        // ══ SHARED STREAM HELPER ══
+        async function streamChat({ messages, sectionId, onToken, onDone, onError }) {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages, sectionId })
+            });
+            if (!res.ok) { onError(); return; }
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let fullText = '';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+                for (const line of lines) {
+                    const data = line.slice(6);
+                    if (data === '[DONE]') { onDone(fullText); return; }
+                    try {
+                        const { token } = JSON.parse(data);
+                        if (token) { fullText += token; onToken(fullText); }
+                    } catch {}
+                }
+            }
+            onDone(fullText);
+        }
+
         async function sm(s) {
             const ta = document.getElementById('ci-' + s);
             const txt = ta.value.trim();
@@ -6585,18 +6613,25 @@
             hist[s].push({ role: 'user', content: txt });
             document.getElementById('sb-' + s).disabled = true;
             const lid = addM(s, '…', 'a loading');
+            const msgEl = document.getElementById(lid);
+            const span = msgEl?.querySelector('.msg-text');
+
             try {
-                // بننادي الـ API بتاعنا اللي على فيرسل
-                const res = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: hist[s], sectionId: 'A' })
+                await streamChat({
+                    messages: hist[s],
+                    sectionId: 'A',
+                    onToken: (text) => {
+                        if (span) { span.innerHTML = renderChatText(text); }
+                        const log = document.getElementById('cl-' + s);
+                        if (log) log.scrollTop = log.scrollHeight;
+                    },
+                    onDone: (text) => {
+                        if (msgEl) msgEl.classList.remove('loading');
+                        hist[s].push({ role: 'assistant', content: text });
+                        if (window.MathJax && span) MathJax.typesetPromise([span]);
+                    },
+                    onError: () => { delM(lid); addM(s, 'حصل خطأ، جرب تاني.', 'a'); }
                 });
-                const d = await res.json();
-                const reply = d.answer || d.choices?.[0]?.message?.content || 'حصل خطأ!';
-                delM(lid); addM(s, reply, 'a');
-                hist[s].push({ role: 'assistant', content: reply });
-                if (window.MathJax) MathJax.typesetPromise();
             } catch (e) { delM(lid); addM(s, 'حصل خطأ، جرب تاني.', 'a'); }
             document.getElementById('sb-' + s).disabled = false;
         }
@@ -6749,7 +6784,6 @@
         }
 
         async function aiPanelSend() {
-            // 1. التحقق وتجهيز البيانات
             if (!aiPanelSection) return;
             const s = aiPanelSection;
             const ta = document.getElementById('ai-panel-input');
@@ -6759,7 +6793,6 @@
 
             const log = document.getElementById('ai-panel-log');
 
-            // دالة مساعدة لعرض الرسائل في اللوج (لو مش موجودة جلوبال عندك)
             function addPanelMsg(text, type) {
                 const d = document.createElement('div');
                 const id = 'pm' + Date.now() + Math.random();
@@ -6768,44 +6801,38 @@
                 d.className = 'msg msg-' + (type === 'u' ? 'u' : 'a') + (isLoading ? ' loading' : '');
                 const span = document.createElement('span');
                 span.className = 'msg-text';
-                if (isLoading) {
-                    span.textContent = text;
-                } else {
-                    span.innerHTML = renderChatText(text);
-                    if (window.MathJax) setTimeout(() => MathJax.typesetPromise([span]), 0);
-                }
+                if (isLoading) { span.textContent = text; }
+                else { span.innerHTML = renderChatText(text); if (window.MathJax) setTimeout(() => MathJax.typesetPromise([span]), 0); }
                 d.appendChild(span);
                 log.appendChild(d);
                 log.scrollTop = log.scrollHeight;
                 return id;
             }
 
-            // 2. تحديث الـ UI وإضافة رسالة المستخدم
             addPanelMsg(txt, 'u');
             hist[s].push({ role: 'user', content: txt });
             const sendBtn = document.getElementById('ai-panel-send');
             sendBtn.disabled = true;
             const lid = addPanelMsg('…', 'loading');
+            const msgEl = document.getElementById(lid);
+            const span = msgEl?.querySelector('.msg-text');
 
-            // 3. الاتصال بـ OpenAI عبر الـ Serverless Function في Vercel
             try {
-                const res = await fetch('/api/chat', { // بيكلم السيرفر بتاعك مش شركة بره
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: hist[s], sectionId: 'A' })
+                await streamChat({
+                    messages: hist[s],
+                    sectionId: 'A',
+                    onToken: (text) => {
+                        if (span) { span.innerHTML = renderChatText(text); }
+                        log.scrollTop = log.scrollHeight;
+                    },
+                    onDone: (text) => {
+                        if (msgEl) msgEl.classList.remove('loading');
+                        hist[s].push({ role: 'assistant', content: text });
+                        if (window.MathJax && span) MathJax.typesetPromise([span]);
+                    },
+                    onError: () => { const el = document.getElementById(lid); if (el) el.remove(); addPanelMsg('حصل خطأ في الاتصال، جرب تاني.', 'a'); }
                 });
-
-                const d = await res.json();
-                const reply = d.answer || d.choices?.[0]?.message?.content || 'حصل خطأ!';
-
-                const el = document.getElementById(lid); if (el) el.remove();
-                addPanelMsg(reply, 'a');
-                hist[s].push({ role: 'assistant', content: reply });
-                if (window.MathJax) MathJax.typesetPromise([log]);
-            } catch (e) {
-                const el = document.getElementById(lid); if (el) el.remove();
-                addPanelMsg('حصل خطأ في الاتصال، جرب تاني.', 'a');
-            }
+            } catch (e) { const el = document.getElementById(lid); if (el) el.remove(); addPanelMsg('حصل خطأ في الاتصال، جرب تاني.', 'a'); }
             sendBtn.disabled = false;
         }
 
@@ -7071,27 +7098,30 @@
     const sendBtn = document.getElementById('solveOverlaySend');
     sendBtn.disabled = true;
     const lid = solveOverlayAddMsg('…', 'a loading');
+    const msgEl = document.getElementById(lid);
+    const span = msgEl?.querySelector('.msg-text');
+    const log = document.getElementById('solveOverlayChatLog');
 
     try {
-        const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                messages: hist[sid],
-                sectionId: solveOverlayCtx.sectionId || 'A'
-            })
+        await streamChat({
+            messages: hist[sid],
+            sectionId: solveOverlayCtx.sectionId || 'A',
+            onToken: (text) => {
+                if (span) { span.innerHTML = renderChatText(text); }
+                if (log) log.scrollTop = log.scrollHeight;
+            },
+            onDone: (text) => {
+                if (msgEl) msgEl.classList.remove('loading');
+                hist[sid].push({ role: 'assistant', content: text });
+                if (window.MathJax && span) MathJax.typesetPromise([span]);
+                syncOverlayToHidden(sid);
+            },
+            onError: () => { solveOverlayDelMsg(lid); solveOverlayAddMsg('حصل خطأ في الاتصال، جرب تاني.', 'a'); }
         });
-        const data = await res.json();
-        solveOverlayDelMsg(lid);
-        const reply = data.answer || data.choices?.[0]?.message?.content || 'مفيش رد!';
-        solveOverlayAddMsg(reply, 'a');
-        hist[sid].push({ role: 'assistant', content: reply });
     } catch (err) {
         solveOverlayDelMsg(lid);
         solveOverlayAddMsg('حصل خطأ في الاتصال، جرب تاني.', 'a');
     }
-
-    syncOverlayToHidden(sid);
     sendBtn.disabled = false;
 }
 
