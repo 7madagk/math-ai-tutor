@@ -1,5 +1,12 @@
-// 1. حط النص بتاعك في متغير لوحده بره عشان الزحمة
-const partA_Prompt = `# System Prompt: Math 2 AI TA - Part A (Concept & Introduction)
+export default async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const { messages, sectionId } = req.body;
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+    // 1. حط النص الصريح هنا (ده اللي OpenAI بيفهمه)
+    const prompts = {
+        'A': `# System Prompt: Math 2 AI TA - Part A (Concept & Introduction)
 
 ## 1. Role & Persona
 You are an expert, friendly, and highly practical Math Teaching Assistant (TA). Your target audience is Egyptian university students studying "Math 2". 
@@ -89,39 +96,54 @@ You are an expert, friendly, and highly practical Math Teaching Assistant (TA). 
 1. لو المسألة فيها حرف واحد ($x$) $\rightarrow$ تفاضل عادي ($d$).
 2. لو المسألة زحمة فيها ($x$ و $y$) $\rightarrow$ تفاضل جزئي ($\partial$).
 3. في الجزئي، بنعمل "Spotlight" على حرف واحد نفاضله، ونعتبر الحرف التاني "صنم" مبيتحركش (كأنه رقم 5 أو 10 بالظبط).
-قشطة كده؟ ده كل اللي محتاج تعرفه هنا. تحب تقولي إيه اللي مسقط معاك بالظبط، ولا ننزل لـ (الجزء C) نشوف المسائل بتتحل إزاي أصل الماث بيتفهم بالحل مش بالكلام؟
-`;
-
-export default async function handler(req, res) {
-    // ... باقي الكود
-    
-    const promptIDs = {
-        'A': partA_Prompt, // هنا بنبعت "النص" مش الـ ID
-        'B': '',
-        'C': '',
-        'D': ''
+قشطة كده؟ ده كل اللي محتاج تعرفه هنا. تحب تقولي إيه اللي مسقط معاك بالظبط، ولا ننزل لـ (الجزء C) نشوف المسائل بتتحل إزاي أصل الماث بيتفهم بالحل مش بالكلام؟`,
+        
+        'B': '', // لسه مخلصش
+        'C': '', // لسه مخلصش
+        'D': ''  // لسه مخلصش
     };
 
-    const selectedPrompt = promptIDs[sectionId];
+    const selectedPromptText = prompts[sectionId];
 
-    // التأكد إن السيكشن شغال
-    if (!selectedPrompt || selectedPrompt === '') {
-        return res.status(400).json({ error: "السيكشن ده لسه مخلصش يا برنس" });
+    // 2. لو السيكشن ملوش نص (زي B أو C) أو مش موجود
+    if (!selectedPromptText || selectedPromptText === '') {
+        return res.status(400).json({ 
+            success: false, 
+            answer: "يا برنس، السيكشن ده لسه تحت الإنشاء، جرب الجزء (أ) دلوقتي." 
+        });
     }
 
     try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            // ... الـ Headers والـ API Key
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
             body: JSON.stringify({
                 model: "gpt-4o-mini",
                 messages: [
-                    { role: "system", content: selectedPrompt }, // هنا هيبعت الكلام المصري
+                    { role: "system", content: selectedPromptText }, // النص المكتوب فوق
                     ...messages
                 ],
-                temperature: 0.4
+                temperature: 0.5,
+                max_tokens: 1500
             })
         });
-        
-        // ... كمل الباقي عادي
+
+        const data = await response.json();
+
+        if (data.choices && data.choices[0]) {
+            res.status(200).json({ 
+                success: true,
+                answer: data.choices[0].message.content 
+            });
+        } else {
+            // لو الـ API Key فيه مشكلة أو خلصت
+            res.status(500).json({ answer: "OpenAI زعلانة شوية، اتأكد من الـ API Key." });
+        }
+
+    } catch (error) {
+        res.status(500).json({ answer: "حصل خطأ في الاتصال بالسيرفر، جرب تاني." });
     }
 }
