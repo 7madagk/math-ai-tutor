@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> content="width=device-width, initial-scale=1.0">
     <title>Math 2 – التفاضل الجزئي</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap"
@@ -4445,6 +4445,80 @@
                 opacity: 0;
             }
         }
+        /* ══════════════════════════════════════
+   MEGA RESPONSIVE FIX (Laptop & Mobile)
+   ══════════════════════════════════════ */
+
+/* ١. للشاشات الكبيرة (اللابتوب) - تأكيد التقسيم */
+@media (min-width: 1025px) {
+    .layout:not(.sidebar-hidden) .main {
+        margin-left: var(--sw); /* المسافة الجانبية للقائمة */
+    }
+    .page {
+        max-width: 1200px; /* عشان الكلام ميسرحش بالعرض أوي */
+        margin: 0 auto;
+    }
+}
+
+/* ٢. للشاشات المتوسطة والموبايل (أقل من 1024px) */
+@media (max-width: 1024px) {
+    :root {
+        --sw: 260px; /* توحيد عرض السايد بار */
+    }
+
+    /* تصغير الحواف العامة */
+    .page {
+        padding: 1.5rem 1rem 3rem !important;
+    }
+
+    /* العناوين */
+    .page-title {
+        font-size: 1.8rem !important;
+    }
+
+    /* المربعات (Grids) تقلب صف واحد بدري */
+    .examples-grid, .rule-pair, .symbol-cards, .grid2 {
+        grid-template-columns: 1fr !important;
+        gap: 1rem;
+    }
+
+    /* خريطة الأسئلة (المربعات الصغيرة) */
+    .qmap-grid {
+        grid-template-columns: repeat(auto-fit, minmax(45px, 1fr)) !important;
+        gap: 8px;
+    }
+
+    /* مساعد الـ AI في الموبايل */
+    .split-wrap.ai-open .ai-side-panel {
+        width: 100% !important;
+        z-index: 2000; /* عشان يغطي كل حاجة */
+    }
+    
+    .layout.ai-panel-open .main {
+        margin-left: 0 !important; /* نلغي الهامش عشان الـ AI واخد الشاشة */
+    }
+
+    /* تحسين شكل الـ Buttons عشان اللمس */
+    .mc-btn, .step-btn, .solve-start-btn {
+        padding: 1rem !important;
+        font-size: 0.9rem !important;
+    }
+
+    /* شاشة الترحيب */
+    .welcome-title {
+        font-size: 2rem !important;
+    }
+    .mascot-svg {
+        width: 110px !important;
+    }
+}
+
+/* ٣. تعديل أخير للـ Tables عشان متخرجش بره الشاشة */
+.symbol-table-styled, .sym-table {
+    display: block;
+    overflow-x: auto; /* يسمح بالتحريك يمين وشمال لو الجدول عريض */
+    white-space: nowrap;
+}
     </style>
 </head>
 
@@ -5722,7 +5796,7 @@
                     .replace(/ركز معايا/g, '<span>ركز معايا</span>');
                 el.innerHTML = highlighted + '<span class="tw-cursor"></span>';
                 const ch = text[i];
-                const delay = /[،,.\-—]/.test(ch) ? 120 : 28;
+                const delay = /[،,.\-—]/.test(ch) ? 40 : 10; // سرعة الكتابة بقت أسرع بكتير
                 twTimer = setTimeout(() => typeWriter(el, btn, text, i + 1), delay);
             } else {
                 const final = text
