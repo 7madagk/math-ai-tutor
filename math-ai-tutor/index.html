@@ -6461,7 +6461,7 @@
                 const res = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: hist[s] })
+                    body: JSON.stringify({ messages: hist[s], sectionId: s })
                 });
                 const d = await res.json();
                 // OpenAI بترجع الرد في choices[0].message.content
@@ -6664,8 +6664,7 @@
                 const res = await fetch('/api/chat', { // بيكلم السيرفر بتاعك مش شركة بره
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: hist[s] })
-                });
+                    body: JSON.stringify({ messages: hist[s], sectionId: s })
 
                 const d = await res.json();
                 // قراءة الرد بصيغة OpenAI (choices)
@@ -6930,87 +6929,52 @@
             }, 200);
         }
 
-        async function solveOverlaySend() {
-            if (!solveOverlayCtx) return;
-            const sid = solveOverlayCtx.sid;
-            const ta = document.getElementById('solveOverlayTa');
-            const txt = ta.value.trim();
-            if (!txt) return;
-            ta.value = ''; ar(ta);
+       async function solveOverlaySend() {
+    if (!solveOverlayCtx) return;
+    const sid = solveOverlayCtx.sid; // ده الـ ID بتاع السؤال (زي Q1 أو SQ1)
+    const ta = document.getElementById('solveOverlayTa');
+    const txt = ta.value.trim();
+    if (!txt) return;
+    ta.value = ''; ar(ta);
 
-            solveOverlayAddMsg(txt, 'u');
-            hist[sid].push({ role: 'user', content: txt });
+    solveOverlayAddMsg(txt, 'u');
+    hist[sid].push({ role: 'user', content: txt });
 
-            const sendBtn = document.getElementById('solveOverlaySend');
-            sendBtn.disabled = true;
-            const lid = solveOverlayAddMsg('…', 'a loading');
+    const sendBtn = document.getElementById('solveOverlaySend');
+    sendBtn.disabled = true;
+    const lid = solveOverlayAddMsg('…', 'a loading');
 
-            // Simulate short delay then show error (no API call)
-            await new Promise(r => setTimeout(r, 600));
-            solveOverlayDelMsg(lid);
-            solveOverlayAddMsg('حصل خطأ في الاتصال، حاول تاني! 🔄', 'a');
-            syncOverlayToHidden(sid);
+    try {
+        // التعديل الحقيقي هنا: بنكلم الـ API بتاعنا وبنبعت الـ sid
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                messages: hist[sid], 
+                sectionId: sid // 👈 ده اللي بيعرف الـ AI إحنا في أنهي مسألة
+            })
+        });
 
-            sendBtn.disabled = false;
+        const d = await res.json();
+        const reply = d.choices[0].message.content; // قراءة رد OpenAI
+
+        solveOverlayDelMsg(lid);
+        solveOverlayAddMsg(reply, 'a');
+        hist[sid].push({ role: 'assistant', content: reply });
+        
+        // تحديث الـ MathJax لو موجود عشان المعادلات تظهر صح
+        if (window.MathJax) {
+            const lastMsg = document.getElementById('solveOverlayChatLog').lastElementChild;
+            MathJax.typesetPromise([lastMsg]);
         }
+    } catch (e) {
+        solveOverlayDelMsg(lid);
+        solveOverlayAddMsg('حصل مشكلة في السيرفر، جرب تاني يا هندسة! 🔄', 'a');
+    }
 
-        function solveOverlayKey(e) {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); solveOverlaySend(); }
-        }
-
-        function solveOverlayAddMsg(txt, type) {
-            const log = document.getElementById('solveOverlayChatLog');
-            const d = document.createElement('div');
-            const id = 'so' + Date.now() + Math.random();
-            d.id = id;
-            const isLoading = type.includes('loading');
-            d.className = 'msg msg-' + (type.includes('u') ? 'u' : 'a') + (isLoading ? ' loading' : '');
-            const span = document.createElement('span');
-            span.className = 'msg-text';
-            if (isLoading) { span.textContent = txt; }
-            else { span.innerHTML = renderChatText(txt); if (window.MathJax) setTimeout(() => MathJax.typesetPromise([span]), 0); }
-            d.appendChild(span);
-            log.appendChild(d);
-            log.scrollTop = log.scrollHeight;
-            return id;
-        }
-
-        function solveOverlayDelMsg(id) {
-            const e = document.getElementById(id); if (e) e.remove();
-        }
-
-        function syncOverlayToHidden(sid) {
-            const log = document.getElementById('solveOverlayChatLog');
-            const hidden = document.getElementById('cl-' + sid);
-            if (!hidden) return;
-            hidden.innerHTML = '';
-            Array.from(log.children).forEach(n => hidden.appendChild(n.cloneNode(true)));
-        }
-
-        function closeSolveOverlay() {
-            if (solveOverlayCtx) syncOverlayToHidden(solveOverlayCtx.sid);
-            document.getElementById('solveOverlay').classList.remove('show');
-            solveOverlayCtx = null;
-        }
-
-        function solveNextQuestion() {
-            if (!solveOverlayCtx) return;
-            const ctx = solveOverlayCtx;
-            const nextN = ctx.qNum + 1;
-            closeSolveOverlay();
-            setTimeout(() => {
-                if (ctx.type === 'first') {
-                    if (nextN <= 9) { showQ(nextN); setTimeout(() => startSolve(nextN), 200); }
-                    else {
-                        showToast('🎉 برافو! دلوقتي تقدر تدخل Second Partial!');
-                        goPage('second', 'Second Partial Derivative');
-                    }
-                } else {
-                    if (nextN <= 5) { showSQ(nextN); setTimeout(() => startSolveS(nextN), 200); }
-                    else { goPage('total', 'Total Derivative'); }
-                }
-            }, 250);
-        }
+    syncOverlayToHidden(sid);
+    sendBtn.disabled = false;
+}
 
     </script>
 
