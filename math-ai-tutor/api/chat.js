@@ -4,7 +4,6 @@ export default async function handler(req, res) {
     const { messages, sectionId } = req.body;
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-    // 1. حط النص الصريح هنا (ده اللي OpenAI بيفهمه)
     const prompts = {
         'A': `# System Prompt: Math 2 AI TA - Part A (Concept & Introduction)
 
@@ -30,7 +29,7 @@ You are an expert, friendly, and highly practical Math Teaching Assistant (TA). 
 
 🧐 يعني إيه أصلاً Partial Derivative؟
 
-زمان في ثانوي والترم الاول، الدنيا كانت هادية ومعاك متغير واحد بس غلبان: $f(x) = x^2$. كنت بتفاضل $f'(x)$ وبتقفل الصفحة وشكراً.
+زمان في ثانوي والترم الأول، الدنيا كانت هادية ومعاك متغير واحد بس غلبان: $f(x) = x^2$. كنت بتفاضل $f'(x)$ وبتقفل الصفحة وشكراً.
 
 لكن دلوقتي الوضع اتطور وبقينا بنتعامل مع دوال "زحمة"؛ يعني الدالة معتمدة على كذا متغير ($x, y$ وأحياناً $z$) كلهم متداخلين في نفس المعادلة.
 
@@ -97,16 +96,14 @@ You are an expert, friendly, and highly practical Math Teaching Assistant (TA). 
 2. لو المسألة زحمة فيها ($x$ و $y$) $\rightarrow$ تفاضل جزئي ($\partial$).
 3. في الجزئي، بنعمل "Spotlight" على حرف واحد نفاضله، ونعتبر الحرف التاني "صنم" مبيتحركش (كأنه رقم 5 أو 10 بالظبط).
 قشطة كده؟ ده كل اللي محتاج تعرفه هنا. تحب تقولي إيه اللي مسقط معاك بالظبط، ولا ننزل لـ (الجزء C) نشوف المسائل بتتحل إزاي أصل الماث بيتفهم بالحل مش بالكلام؟`,
-        
-        'B': '', // لسه مخلصش
-        'C': '', // لسه مخلصش
-        'D': ''  // لسه مخلصش
+        'B': null,
+        'C': null,
+        'D': null
     };
 
-    const selectedPromptText = prompts[sectionId];
+    const selectedPrompt = prompts[sectionId];
 
-    // 2. لو السيكشن ملوش نص (زي B أو C) أو مش موجود
-    if (!selectedPromptText || selectedPromptText === '') {
+    if (!selectedPrompt) {
         return res.status(400).json({ 
             success: false, 
             answer: "يا برنس، السيكشن ده لسه تحت الإنشاء، جرب الجزء (أ) دلوقتي." 
@@ -123,7 +120,7 @@ You are an expert, friendly, and highly practical Math Teaching Assistant (TA). 
             body: JSON.stringify({
                 model: "gpt-4o-mini",
                 messages: [
-                    { role: "system", content: selectedPromptText }, // النص المكتوب فوق
+                    { role: "system", content: selectedPrompt },
                     ...messages
                 ],
                 temperature: 0.5,
@@ -133,17 +130,26 @@ You are an expert, friendly, and highly practical Math Teaching Assistant (TA). 
 
         const data = await response.json();
 
-        if (data.choices && data.choices[0]) {
+        // ─── هنا كانت المشكلة الأساسية ───
+        if (data.choices && data.choices[0] && data.choices[0].message) {
             res.status(200).json({ 
                 success: true,
                 answer: data.choices[0].message.content 
             });
         } else {
-            // لو الـ API Key فيه مشكلة أو خلصت
-            res.status(500).json({ answer: "OpenAI زعلانة شوية، اتأكد من الـ API Key." });
+            // طباعة الـ error الحقيقي عشان تعرف إيه المشكلة
+            console.error('OpenAI unexpected response:', JSON.stringify(data));
+            res.status(500).json({ 
+                success: false,
+                answer: `OpenAI رجعت response غريب: ${data.error?.message || JSON.stringify(data)}` 
+            });
         }
 
     } catch (error) {
-        res.status(500).json({ answer: "حصل خطأ في الاتصال بالسيرفر، جرب تاني." });
+        console.error('Fetch error:', error);
+        res.status(500).json({ 
+            success: false,
+            answer: "حصل خطأ في الاتصال بالسيرفر، جرب تاني." 
+        });
     }
 }
