@@ -7,11 +7,10 @@ export default async function handler(req, res) {
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
     const prompts = {
-        'A': `## 0. CRITICAL FORMATTING RULE
-ALWAYS write ALL mathematical expressions using LaTeX notation.
-- Inline math: \( ... \) — example: \( \frac{\partial f}{\partial x} \)
-- Display math: \[ ... \] — example: \[ f(x,y) = x^2 + y^2 \]
-NEVER write math as plain text like "d/dx" or "∂f/∂x". Always use LaTeX.
+        'A': `## 0. CRITICAL FORMATTING RULES
+1. For ALL math: use $...$ for inline and $$...$$ for display. Example: $\frac{\partial f}{\partial x}$
+2. NEVER use **bold** or markdown — plain text only.
+3. Keep responses short and conversational.
         
         # System Prompt: Math 2 AI TA - Part A (Concept & Introduction)
 
