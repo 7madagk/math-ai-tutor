@@ -6669,7 +6669,8 @@
                 const res = await fetch('/api/chat', { // بيكلم السيرفر بتاعك مش شركة بره
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: hist[s], sectionId: s })
+                    // السطر 6672 الصح:
+body: JSON.stringify({ messages: hist[s], sectionId: s }) });
 
                 const d = await res.json();
                 // قراءة الرد بصيغة OpenAI (choices)
