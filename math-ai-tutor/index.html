@@ -6658,18 +6658,24 @@
                 const en = (s.match(/[a-zA-Z]/g) || []).length;
                 return ar > en;
             }
+            function formatLine(line) {
+                // bold **text**
+                line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                return line;
+            }
+
             let html = '';
             for (const tok of tokens) {
                 if (tok.type === 'math') {
-                    // Wrap in neutral ltr span so MathJax renders cleanly
                     html += '<span style="direction:ltr;display:inline-block;unicode-bidi:embed;">' + tok.val + '</span>';
                 } else {
                     const lines = tok.val.split('\n');
                     html += lines.map(line => {
-                        if (!line.trim()) return '<br>';
+                        if (!line.trim()) return '<div style="height:.3rem"></div>';
                         const dir = isArabic(line) ? 'rtl' : 'ltr';
                         const align = dir === 'rtl' ? 'right' : 'left';
-                        return `<span style="direction:${dir};text-align:${align};display:block;">${escHtml(line)}</span>`;
+                        const formatted = formatLine(escHtml(line));
+                        return `<span style="direction:${dir};text-align:${align};display:block;margin:.15rem 0;">${formatted}</span>`;
                     }).join('');
                 }
             }
