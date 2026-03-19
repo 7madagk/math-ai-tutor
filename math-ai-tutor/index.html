@@ -6659,8 +6659,12 @@
                 return ar > en;
             }
             function formatLine(line) {
+                // شيل الـ markdown headers ### ## #
+                line = line.replace(/^#{1,6}\s*/, '');
                 // bold **text**
                 line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                // شيل النجوم المنفردة *text*
+                line = line.replace(/\*(.*?)\*/g, '$1');
                 return line;
             }
 
