@@ -6590,11 +6590,10 @@
                 const res = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: hist[s] })
+                    body: JSON.stringify({ messages: hist[s], sectionId: 'A' })
                 });
                 const d = await res.json();
-                // OpenAI بترجع الرد في choices[0].message.content
-                const reply = d.choices[0].message.content;
+                const reply = d.answer || d.choices?.[0]?.message?.content || 'حصل خطأ!';
                 delM(lid); addM(s, reply, 'a');
                 hist[s].push({ role: 'assistant', content: reply });
                 if (window.MathJax) MathJax.typesetPromise();
@@ -6793,12 +6792,11 @@
                 const res = await fetch('/api/chat', { // بيكلم السيرفر بتاعك مش شركة بره
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: hist[s] })
+                    body: JSON.stringify({ messages: hist[s], sectionId: 'A' })
                 });
 
                 const d = await res.json();
-                // قراءة الرد بصيغة OpenAI (choices)
-                const reply = d.choices[0].message.content;
+                const reply = d.answer || d.choices?.[0]?.message?.content || 'حصل خطأ!';
 
                 const el = document.getElementById(lid); if (el) el.remove();
                 addPanelMsg(reply, 'a');
