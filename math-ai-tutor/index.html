@@ -5658,18 +5658,20 @@
     <script>
         // ══ WELCOME SCREEN ══
         function closeWelcome() {
-            document.getElementById('welcomeScreen').classList.add('hidden');
-            // show prompt above ch1 in sidebar
-            document.getElementById('sidebarStartPrompt').classList.add('show');
-            // show glow + tooltip on Introduction
-            document.getElementById('intro-dot').classList.add('glow');
-            document.getElementById('introTooltip').classList.add('show');
-            // on mobile open sidebar so user can see the prompt
-            if (window.innerWidth <= 760) {
-                document.getElementById('sidebar').classList.add('open');
-                document.getElementById('mobOverlay').classList.add('show');
-            }
-        }
+    document.getElementById('welcomeScreen').classList.add('hidden');
+    
+    // التعديل اللي ناقصك هنا: فتح صفحة الـ Intro فوراً
+    goPage('intro', 'Introduction'); 
+
+    document.getElementById('sidebarStartPrompt').classList.add('show');
+    document.getElementById('intro-dot').classList.add('glow');
+    document.getElementById('introTooltip').classList.add('show');
+    
+    if (window.innerWidth <= 760) {
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('mobOverlay').classList.add('show');
+    }
+}
 
         function removeIntroGlow() {
             document.getElementById('intro-dot').classList.remove('glow');
