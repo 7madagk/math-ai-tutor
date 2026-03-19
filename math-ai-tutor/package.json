@@ -1,5 +1,6 @@
 {
-  "name": "math-ai-tutor",
-  "version": "1.0.0",
-  "dependencies": {}
+    "name": "math-ai-tutor",
+    "version": "1.0.0",
+    "type": "module",
+    "dependencies": {}
 }
