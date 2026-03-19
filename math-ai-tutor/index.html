@@ -5657,20 +5657,19 @@
 
     <script>
         // ══ WELCOME SCREEN ══
-       function closeWelcome() {
-    // 1. إخفاء شاشة الترحيب
-    document.getElementById('welcomeScreen').classList.add('hidden');
-    
-    // 2. تفعيل صفحة المقدمة كصفحة افتراضية في الخلفية
-    goPage('intro', 'Introduction');
-
-    // 3. إظهار الـ Popup بتاع "قبل ما نبدأ" علطول
-    setTimeout(() => {
-        showIntroPopup();
-        // بنشيل التلميحات لأننا دخلنا في الصفحة فعلاً
-        removeIntroGlow();
-    }, 400); // تأخير بسيط عشان الأنميشن يكون شكله أشيك
-}
+        function closeWelcome() {
+            document.getElementById('welcomeScreen').classList.add('hidden');
+            // show prompt above ch1 in sidebar
+            document.getElementById('sidebarStartPrompt').classList.add('show');
+            // show glow + tooltip on Introduction
+            document.getElementById('intro-dot').classList.add('glow');
+            document.getElementById('introTooltip').classList.add('show');
+            // on mobile open sidebar so user can see the prompt
+            if (window.innerWidth <= 760) {
+                document.getElementById('sidebar').classList.add('open');
+                document.getElementById('mobOverlay').classList.add('show');
+            }
+        }
 
         function removeIntroGlow() {
             document.getElementById('intro-dot').classList.remove('glow');
