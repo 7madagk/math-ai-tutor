@@ -6,7 +6,7 @@ export default async function handler(req, res) {
 
     // بنربط الـ IDs اللي معاك بالأجزاء بتاعتها
     const promptIDs = {
-        'A': 'pmpt_69ba4113f411c8197b88a2a029d9d98440b1d2d9a7703c078',
+        'A': "أنت مساعد تعليمي لطلاب جامعة.. الميدترم يوم 1/1/2026.. اشرح بلهجة مصرية.",
         'B': 'pmpt_69ba4187a4b8819487e5149c6dd9c1de07f19f90b79f8a57',
         'C': 'pmpt_69ba4187a4b8819487e5149c6dd9c1de07f19f90b79f8a57',
         'D': 'pmpt_69ba41d050748196b4ce39726f55e49601b77901549f4b6c'
