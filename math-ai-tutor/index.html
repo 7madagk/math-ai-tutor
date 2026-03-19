@@ -7060,28 +7060,42 @@
         }
 
         async function solveOverlaySend() {
-            if (!solveOverlayCtx) return;
-            const sid = solveOverlayCtx.sid;
-            const ta = document.getElementById('solveOverlayTa');
-            const txt = ta.value.trim();
-            if (!txt) return;
-            ta.value = ''; ar(ta);
+    if (!solveOverlayCtx) return;
+    const sid = solveOverlayCtx.sid;
+    const ta = document.getElementById('solveOverlayTa');
+    const txt = ta.value.trim();
+    if (!txt) return;
+    ta.value = ''; ar(ta);
 
-            solveOverlayAddMsg(txt, 'u');
-            hist[sid].push({ role: 'user', content: txt });
+    solveOverlayAddMsg(txt, 'u');
+    hist[sid].push({ role: 'user', content: txt });
 
-            const sendBtn = document.getElementById('solveOverlaySend');
-            sendBtn.disabled = true;
-            const lid = solveOverlayAddMsg('…', 'a loading');
+    const sendBtn = document.getElementById('solveOverlaySend');
+    sendBtn.disabled = true;
+    const lid = solveOverlayAddMsg('…', 'a loading');
 
-            // Simulate short delay then show error (no API call)
-            await new Promise(r => setTimeout(r, 600));
-            solveOverlayDelMsg(lid);
-            solveOverlayAddMsg('حصل خطأ في الاتصال، حاول تاني! 🔄', 'a');
-            syncOverlayToHidden(sid);
+    try {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages: hist[sid],
+                sectionId: solveOverlayCtx.sectionId || 'A'
+            })
+        });
+        const data = await res.json();
+        solveOverlayDelMsg(lid);
+        const reply = data.answer || data.choices?.[0]?.message?.content || 'مفيش رد!';
+        solveOverlayAddMsg(reply, 'a');
+        hist[sid].push({ role: 'assistant', content: reply });
+    } catch (err) {
+        solveOverlayDelMsg(lid);
+        solveOverlayAddMsg('حصل خطأ في الاتصال، جرب تاني.', 'a');
+    }
 
-            sendBtn.disabled = false;
-        }
+    syncOverlayToHidden(sid);
+    sendBtn.disabled = false;
+}
 
         function solveOverlayKey(e) {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); solveOverlaySend(); }
