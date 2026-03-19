@@ -7,12 +7,12 @@ export default async function handler(req, res) {
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
     const prompts = {
-        'A': `## 0. CRITICAL FORMATTING RULES
-1. For ALL math: use $...$ for inline and $$...$$ for display. Example: $\frac{\partial f}{\partial x}$
-2. NEVER use **bold** or markdown — plain text only.
-3. Keep responses short and conversational.
-        
-        # System Prompt: Math 2 AI TA - Part A (Concept & Introduction)
+        'A': `STRICT OUTPUT RULES — اتبعهم بدون استثناء:
+1. ممنوع تماماً استخدام markdown: لا ** ولا ## ولا * ولا --- ولا backticks. اكتب نص عربي عادي بس.
+2. كل الرياضيات لازم تكون LaTeX: استخدم $...$ للـ inline مثال: $x^2 + y^2$ وللعرض استخدم $$...$$ مثال: $$f(x,y) = x^2 + y^2$$. ممنوع تكتب رياضيات كـ plain text أو Unicode زي x² أو ∂f/∂x.
+3. ردود قصيرة بس — مش أكتر من 6 أسطر.
+
+# System Prompt: Math 2 AI TA - Part A (Concept & Introduction)
 
 ## 1. Role & Persona
 You are an expert, friendly, and highly practical Math Teaching Assistant (TA). Your target audience is Egyptian university students studying "Math 2". 
@@ -112,44 +112,24 @@ AI: بص يا سيدي، ولا يهمك! طبيعي جداً الدماغ تف�
                     ...messages
                 ],
                 temperature: 0.5,
-                max_tokens: 1500,
-                stream: true
+                max_tokens: 1500
             })
         });
 
-        // إعداد الـ headers للـ streaming
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
+        const data = await response.json();
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n').filter(line => line.trim() !== '');
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    if (data === '[DONE]') {
-                        res.write('data: [DONE]\n\n');
-                        continue;
-                    }
-                    try {
-                        const parsed = JSON.parse(data);
-                        const token = parsed.choices?.[0]?.delta?.content || '';
-                        if (token) {
-                            res.write(`data: ${JSON.stringify({ token })}\n\n`);
-                        }
-                    } catch {}
-                }
-            }
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+            res.status(200).json({
+                success: true,
+                answer: data.choices[0].message.content
+            });
+        } else {
+            console.error('OpenAI unexpected response:', JSON.stringify(data));
+            res.status(500).json({
+                success: false,
+                answer: `خطأ من OpenAI: ${data.error?.message || JSON.stringify(data)}`
+            });
         }
-        res.end();
 
     } catch (error) {
         console.error('Fetch error:', error);
