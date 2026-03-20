@@ -46,16 +46,21 @@ export default async function handler(req, res) {
         res.setHeader('Connection', 'keep-alive');
 
         const reader = response.body.getReader();
-        const decoder = new TextDecoder();
+        // { stream: true } ضروري عشان الحروف العربية multi-byte في UTF-8
+        // لو chunk انقطع في نص حرف الـ decoder يكمله من الـ chunk الجاي
+        const decoder = new TextDecoder('utf-8');
+        let sseBuffer = ''; // يحتفظ بنص سطر SSE لو انقطع بين chunks
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n').filter(line => line.trim() !== '');
+            sseBuffer += decoder.decode(value, { stream: true });
+            // نقسم على أسطر كاملة فقط، نخلي الناقص في الـ buffer
+            const lines = sseBuffer.split('\n');
+            sseBuffer = lines.pop(); // آخر عنصر ممكن يكون سطر ناقص
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
-                const data = line.slice(6);
+                const data = line.slice(6).trim();
                 if (data === '[DONE]') { res.write('data: [DONE]\n\n'); continue; }
                 try {
                     const parsed = JSON.parse(data);
