@@ -6640,28 +6640,33 @@
            Handles: LaTeX (MathJax), Arabic/English bidi, newlines, safe HTML
         */
         function renderChatText(txt) {
-            // 1. استخرج الـ LaTeX واحفظه مؤقتاً عشان marked ميخربوش
+            // 1. احفظ الـ LaTeX
             const mathStore = [];
             txt = txt.replace(/\$\$[\s\S]*?\$\$|\$[^\$\n]+?\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g, (match) => {
                 mathStore.push(match);
                 return `%%MATH${mathStore.length - 1}%%`;
             });
 
-            // 2. لف أي حرف Latin منفرد (متغير رياضي) في $...$ تلقائياً عشان الـ bidi ميتخربش
-            txt = txt.replace(/(^|[\s\u0600-\u06FF،؛؟!])([xyzwdfnt])(?=[\s\u0600-\u06FF،؛؟!]|$)/gm, '$1$$$2$$');
-
-            // 3. شغل marked على الباقي
+            // 2. شغل marked
             let html = marked.parse(txt, { breaks: true, gfm: true });
 
-            // 4. رجع الـ LaTeX
+            // 3. رجع الـ LaTeX - inline في span ltr، display في div centered
             html = html.replace(/%%MATH(\d+)%%/g, (_, i) => {
                 const m = mathStore[parseInt(i)];
                 const isDisplay = m.startsWith('$$') || m.startsWith('\\[');
-                if (isDisplay) return `<div style="direction:ltr;text-align:center;margin:.5rem 0;">${m}</div>`;
-                return `<span style="direction:ltr;display:inline;unicode-bidi:embed;">${m}</span>`;
+                if (isDisplay) return `<div style="direction:ltr;text-align:center;margin:.4rem 0;display:block;">${m}</div>`;
+                return `<span style="direction:ltr;unicode-bidi:embed;display:inline-block;">${m}</span>`;
             });
 
-            return html;
+            // 4. لف كل نص Latin جوه HTML في span ltr عشان الـ bidi ميخربش العربي
+            html = html.replace(/(<[^>]*>)|([A-Za-z][A-Za-z0-9\s\(\)\[\]\.,\+\-\*\/\^_=:→←↔"']*)/g, (m, tag, latin) => {
+                if (tag) return tag;
+                if (latin && latin.trim().length > 0)
+                    return `<span dir="ltr" style="unicode-bidi:embed;display:inline-block;">${latin}</span>`;
+                return m;
+            });
+
+            return `<div dir="rtl" style="text-align:right;">${html}</div>`;
         }
 
         function addM(s, txt, type) {
