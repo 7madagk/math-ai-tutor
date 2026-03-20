@@ -6649,39 +6649,40 @@
         */
         function renderChatText(txt) {
             function escHtml(s) {
-                return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             }
+            // Tokenise into LaTeX vs plain-text segments
+            const tokens = [];
+            const latexRe = /(\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$\$[\s\S]*?\$\$|\$(?!\$)[\s\S]*?\$)/g;
+            let last = 0, m;
+            while ((m = latexRe.exec(txt)) !== null) {
+                if (m.index > last) tokens.push({ type: 'text', val: txt.slice(last, m.index) });
+                tokens.push({ type: 'math', val: m[0] });
+                last = m.index + m[0].length;
+            }
+            if (last < txt.length) tokens.push({ type: 'text', val: txt.slice(last) });
 
-            // 1. احفظ الـ LaTeX
-            const mathStore = [];
-            txt = txt.replace(/\$\$[\s\S]*?\$\$|\$[^\$\n]+?\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g, m => {
-                mathStore.push(m);
-                return `%%M${mathStore.length-1}%%`;
-            });
-
-            // 2. اعمل render سطر سطر
-            const lines = txt.split('\n');
+            function isArabic(s) {
+                const ar = (s.match(/[\u0600-\u06FF]/g) || []).length;
+                const en = (s.match(/[a-zA-Z]/g) || []).length;
+                return ar > en;
+            }
             let html = '';
-            for (const line of lines) {
-                if (!line.trim()) { html += '<br>'; continue; }
-
-                let l = escHtml(line);
-
-                // bold **text**
-                l = l.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-                // رجع الـ LaTeX
-                l = l.replace(/%%M(\d+)%%/g, (_, i) => {
-                    const m = mathStore[parseInt(i)];
-                    const isDisplay = m.startsWith('$$') || m.startsWith('\\[');
-                    if (isDisplay) return `</div><div style="direction:ltr;text-align:center;margin:.4rem 0;">${m}</div><div dir="rtl" style="text-align:right;">`;
-                    return `<span style="direction:ltr;unicode-bidi:isolate;display:inline-block;">${m}</span>`;
-                });
-
-                html += `<div dir="rtl" style="text-align:right;margin:.1rem 0;">${l}</div>`;
+            for (const tok of tokens) {
+                if (tok.type === 'math') {
+                    // Wrap in neutral ltr span so MathJax renders cleanly
+                    html += '<span style="direction:ltr;display:inline-block;unicode-bidi:embed;">' + tok.val + '</span>';
+                } else {
+                    const lines = tok.val.split('\n');
+                    html += lines.map(line => {
+                        if (!line.trim()) return '<br>';
+                        const dir = isArabic(line) ? 'rtl' : 'ltr';
+                        const align = dir === 'rtl' ? 'right' : 'left';
+                        return `<span style="direction:${dir};text-align:${align};display:block;">${escHtml(line)}</span>`;
+                    }).join('');
+                }
             }
-
-            return html;
+            return html || escHtml(txt);
         }
 
         function addM(s, txt, type) {
