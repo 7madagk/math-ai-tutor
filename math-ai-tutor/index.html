@@ -6587,6 +6587,7 @@
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
             let fullText = '';
+            let lastRender = 0;
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -6597,7 +6598,15 @@
                     if (data === '[DONE]') { onDone(fullText); return; }
                     try {
                         const { token } = JSON.parse(data);
-                        if (token) { fullText += token; onToken(fullText); }
+                        if (token) {
+                            fullText += token;
+                            // بنعرض بس لو آخر حرف space أو newline أو كل 30 حرف عشان نمنع قطع الكلام
+                            const now = fullText.length;
+                            if (token.includes(' ') || token.includes('\n') || now - lastRender >= 30) {
+                                onToken(fullText);
+                                lastRender = now;
+                            }
+                        }
                     } catch {}
                 }
             }
