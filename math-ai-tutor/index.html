@@ -8,6 +8,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap"
         rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
     <script>
         window.MathJax = {
             chtml: { scale: 1.1 },
@@ -6639,51 +6640,25 @@
            Handles: LaTeX (MathJax), Arabic/English bidi, newlines, safe HTML
         */
         function renderChatText(txt) {
-            function escHtml(s) {
-                return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            }
-            // Tokenise into LaTeX vs plain-text segments
-            const tokens = [];
-            const latexRe = /(\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$\$[\s\S]*?\$\$|\$(?!\$)[\s\S]*?\$)/g;
-            let last = 0, m;
-            while ((m = latexRe.exec(txt)) !== null) {
-                if (m.index > last) tokens.push({ type: 'text', val: txt.slice(last, m.index) });
-                tokens.push({ type: 'math', val: m[0] });
-                last = m.index + m[0].length;
-            }
-            if (last < txt.length) tokens.push({ type: 'text', val: txt.slice(last) });
+            // 1. استخرج الـ LaTeX واحفظه مؤقتاً عشان marked ميخربوش
+            const mathStore = [];
+            txt = txt.replace(/\$\$[\s\S]*?\$\$|\$[^\$\n]+?\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g, (match) => {
+                mathStore.push(match);
+                return `%%MATH${mathStore.length - 1}%%`;
+            });
 
-            function isArabic(s) {
-                const ar = (s.match(/[\u0600-\u06FF]/g) || []).length;
-                const en = (s.match(/[a-zA-Z]/g) || []).length;
-                return ar > en;
-            }
-            function formatLine(line) {
-                // شيل الـ markdown headers ### ## #
-                line = line.replace(/^#{1,6}\s*/, '');
-                // bold **text**
-                line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                // شيل النجوم المنفردة *text*
-                line = line.replace(/\*(.*?)\*/g, '$1');
-                return line;
-            }
+            // 2. شغل marked على الباقي
+            let html = marked.parse(txt, { breaks: true, gfm: true });
 
-            let html = '';
-            for (const tok of tokens) {
-                if (tok.type === 'math') {
-                    html += '<span style="direction:ltr;display:inline-block;unicode-bidi:embed;">' + tok.val + '</span>';
-                } else {
-                    const lines = tok.val.split('\n');
-                    html += lines.map(line => {
-                        if (!line.trim()) return '<div style="height:.3rem"></div>';
-                        const dir = isArabic(line) ? 'rtl' : 'ltr';
-                        const align = dir === 'rtl' ? 'right' : 'left';
-                        const formatted = formatLine(escHtml(line));
-                        return `<span style="direction:${dir};text-align:${align};display:block;margin:.15rem 0;">${formatted}</span>`;
-                    }).join('');
-                }
-            }
-            return html || escHtml(txt);
+            // 3. رجع الـ LaTeX
+            html = html.replace(/%%MATH(\d+)%%/g, (_, i) => {
+                const m = mathStore[parseInt(i)];
+                const isDisplay = m.startsWith('$$') || m.startsWith('\\[');
+                if (isDisplay) return `<div style="direction:ltr;text-align:center;margin:.5rem 0;">${m}</div>`;
+                return `<span style="direction:ltr;display:inline;unicode-bidi:embed;">${m}</span>`;
+            });
+
+            return html;
         }
 
         function addM(s, txt, type) {
