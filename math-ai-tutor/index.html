@@ -6585,26 +6585,31 @@
             });
             if (!res.ok) { onError(); return; }
             const reader = res.body.getReader();
-            const decoder = new TextDecoder();
+            // { stream: true } ضروري عشان الحروف العربية multi-byte في UTF-8
+            // لو chunk انقطع في نص حرف الـ decoder يكمله من الـ chunk الجاي
+            const decoder = new TextDecoder('utf-8');
             let fullText = '';
-            let lastRender = 0;
+            let sseBuffer = ''; // يحتفظ بنص سطر SSE لو انقطع بين chunks
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+                // stream: true يحل مشكلة كسر الحروف العربية بين chunks
+                sseBuffer += decoder.decode(value, { stream: true });
+                // نقسم على أسطر كاملة فقط، نخلي الناقص في الـ buffer
+                const lines = sseBuffer.split('\n');
+                sseBuffer = lines.pop(); // آخر عنصر ممكن يكون سطر ناقص
                 for (const line of lines) {
-                    const data = line.slice(6);
+                    if (!line.startsWith('data: ')) continue;
+                    const data = line.slice(6).trim();
                     if (data === '[DONE]') { onDone(fullText); return; }
                     try {
                         const { token } = JSON.parse(data);
                         if (token) {
                             fullText += token;
-                            // بنعرض بس لو آخر حرف space أو newline أو كل 30 حرف عشان نمنع قطع الكلام
-                            const now = fullText.length;
-                            if (token.includes(' ') || token.includes('\n') || now - lastRender >= 30) {
+                            // نعرض عند حدود الكلمات فقط عشان الحروف العربية تترابط صح
+                            const lastChar = fullText[fullText.length - 1];
+                            if (/[\s\n،؛.!?؟]/.test(lastChar)) {
                                 onToken(fullText);
-                                lastRender = now;
                             }
                         }
                     } catch {}
