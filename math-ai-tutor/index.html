@@ -6637,7 +6637,7 @@
                     onToken: (text) => {
                         if (span) { span.innerHTML = renderChatText(text); }
                         const log = document.getElementById('cl-' + s);
-                        if (log) log.scrollTop = log.scrollHeight;
+                        if (log) requestAnimationFrame(() => log.scrollTop = log.scrollHeight);
                     },
                     onDone: (text) => {
                         if (msgEl) msgEl.classList.remove('loading');
@@ -6683,7 +6683,8 @@
                         if (!line.trim()) return '<br>';
                         const dir = isArabic(line) ? 'rtl' : 'ltr';
                         const align = dir === 'rtl' ? 'right' : 'left';
-                        return `<span style="direction:${dir};text-align:${align};display:block;">${escHtml(line)}</span>`;
+                        const safeHtml = escHtml(line).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                        return `<span style="direction:${dir};text-align:${align};display:block;">${safeHtml}</span>`;
                     }).join('');
                 }
             }
@@ -6837,7 +6838,7 @@
                     sectionId: 'A',
                     onToken: (text) => {
                         if (span) { span.innerHTML = renderChatText(text); }
-                        log.scrollTop = log.scrollHeight;
+                        requestAnimationFrame(() => log.scrollTop = log.scrollHeight);
                     },
                     onDone: (text) => {
                         if (msgEl) msgEl.classList.remove('loading');
@@ -7122,7 +7123,7 @@
             sectionId: solveOverlayCtx.sectionId || 'A',
             onToken: (text) => {
                 if (span) { span.innerHTML = renderChatText(text); }
-                if (log) log.scrollTop = log.scrollHeight;
+                if (log) requestAnimationFrame(() => log.scrollTop = log.scrollHeight);
             },
             onDone: (text) => {
                 if (msgEl) msgEl.classList.remove('loading');
