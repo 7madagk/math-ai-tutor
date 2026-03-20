@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
     const prompts = {
-        'A': null,
+        'A': `انت مدرس فزياء`,
         'B': null,
         'C': null,
         'D': null
