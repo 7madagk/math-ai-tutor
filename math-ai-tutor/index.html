@@ -1748,31 +1748,7 @@
             word-break: break-word;
             white-space: normal;
             text-align: right;
-            direction: rtl;
             unicode-bidi: plaintext;
-        }
-
-        /* كل الـ elements اللي marked بيعملها تبقى RTL */
-        .msg-text p,
-        .msg-text li,
-        .msg-text ul,
-        .msg-text ol,
-        .msg-text strong,
-        .msg-text em {
-            direction: rtl;
-            text-align: right;
-            unicode-bidi: plaintext;
-        }
-
-        .msg-text ul,
-        .msg-text ol {
-            padding-right: 1.4rem;
-            padding-left: 0;
-            margin: .3rem 0;
-        }
-
-        .msg-text p {
-            margin: .25rem 0;
         }
 
         .msg-a.loading .msg-text {
@@ -6671,10 +6647,13 @@
                 return `%%MATH${mathStore.length - 1}%%`;
             });
 
-            // 2. شغل marked على الباقي
+            // 2. لف أي حرف Latin منفرد (متغير رياضي) في $...$ تلقائياً عشان الـ bidi ميتخربش
+            txt = txt.replace(/(^|[\s\u0600-\u06FF،؛؟!])([xyzwdfnt])(?=[\s\u0600-\u06FF،؛؟!]|$)/gm, '$1$$$2$$');
+
+            // 3. شغل marked على الباقي
             let html = marked.parse(txt, { breaks: true, gfm: true });
 
-            // 3. رجع الـ LaTeX
+            // 4. رجع الـ LaTeX
             html = html.replace(/%%MATH(\d+)%%/g, (_, i) => {
                 const m = mathStore[parseInt(i)];
                 const isDisplay = m.startsWith('$$') || m.startsWith('\\[');
