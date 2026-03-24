@@ -6578,44 +6578,14 @@
 
         // ══ SHARED STREAM HELPER ══
         async function streamChat({ messages, sectionId, onToken, onDone, onError }) {
-            const res = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages, sectionId })
-            });
-            if (!res.ok) { onError(); return; }
-            const reader = res.body.getReader();
-            // { stream: true } ضروري عشان الحروف العربية multi-byte في UTF-8
-            // لو chunk انقطع في نص حرف الـ decoder يكمله من الـ chunk الجاي
-            const decoder = new TextDecoder('utf-8');
-            let fullText = '';
-            let sseBuffer = ''; // يحتفظ بنص سطر SSE لو انقطع بين chunks
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                // stream: true يحل مشكلة كسر الحروف العربية بين chunks
-                sseBuffer += decoder.decode(value, { stream: true });
-                // نقسم على أسطر كاملة فقط، نخلي الناقص في الـ buffer
-                const lines = sseBuffer.split('\n');
-                sseBuffer = lines.pop(); // آخر عنصر ممكن يكون سطر ناقص
-                for (const line of lines) {
-                    if (!line.startsWith('data: ')) continue;
-                    const data = line.slice(6).trim();
-                    if (data === '[DONE]') { onDone(fullText); return; }
-                    try {
-                        const { token } = JSON.parse(data);
-                        if (token) {
-                            fullText += token;
-                            // نعرض عند حدود الكلمات فقط عشان الحروف العربية تترابط صح
-                            const lastChar = fullText[fullText.length - 1];
-                            if (/[\s\n،؛.!?؟]/.test(lastChar)) {
-                                onToken(fullText);
-                            }
-                        }
-                    } catch {}
-                }
+            const FIXED_REPLY = `يا ريس كحك العيد مأثر ولا إيه؟ ما أنا كاتبلك في المربع الأخضر إن آخرنا 3 متغيرات! شكلك مبتقرأش الشرح.\n\nعموماً هي نفس الفكرة بالمللي: بتعمل "Spotlight" على المتغير اللي بتفاضله، وتعتبر الباقي كله أرقام ثابتة ملناش دعوة بيها.\n\nبس إحنا حالياً بنبصمج عشان ننجح، فمحبكتش 4 متغيرات وفزلكة دلوقتي خالص. ولو الدكتور جاب أكتر من تلاتة في الامتحان، هاخدك أنا وإنت ونطب علي الدكتور في المكتب! ركز بس في الـ x و y و z خلينا نعدي.`;
+            let current = '';
+            for (const char of FIXED_REPLY) {
+                current += char;
+                onToken(current);
+                await new Promise(r => setTimeout(r, 18));
             }
-            onDone(fullText);
+            onDone(current);
         }
 
         async function sm(s) {
